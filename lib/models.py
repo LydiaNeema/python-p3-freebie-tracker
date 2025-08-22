@@ -19,11 +19,59 @@ class Company(Base):
     def __repr__(self):
         return f'<Company {self.name}>'
 
+    freebies = relationship("Freebie", back_populates="company")
+    devs = relationship(
+        "Dev",
+        secondary="freebies",
+        primaryjoin="Company.id==Freebie.company_id",
+        secondaryjoin="Dev.id==Freebie.dev_id",
+        viewonly=True
+    )
+
+    def give_freebie(self, dev, item_name, value):
+        """Create and give a freebie to a dev from this company."""
+        return Freebie(item_name=item_name, value=value, dev=dev, company=self)
+
+
 class Dev(Base):
     __tablename__ = 'devs'
 
     id = Column(Integer(), primary_key=True)
-    name= Column(String())
+    name = Column(String())
 
     def __repr__(self):
         return f'<Dev {self.name}>'
+
+    freebies = relationship("Freebie", back_populates="dev")
+    companies = relationship(
+        "Company",
+        secondary="freebies",
+        primaryjoin="Dev.id==Freebie.dev_id",
+        secondaryjoin="Company.id==Freebie.company_id",
+        viewonly=True
+    )
+
+    def received_freebie(self, item_name, value, company):
+        """Receive a freebie from a company."""
+        return Freebie(item_name=item_name, value=value, company=company, dev=self)
+
+
+class Freebie(Base):
+    __tablename__ = "freebies"
+
+    id = Column(Integer, primary_key=True)
+    item_name = Column(String(length=255), nullable=False)
+    value = Column(Integer, nullable=False)
+
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    dev_id = Column(Integer, ForeignKey("devs.id"), nullable=False)
+
+    company = relationship("Company", back_populates="freebies")
+    dev = relationship("Dev", back_populates="freebies")
+
+    def __repr__(self):
+        return f"<Freebie {self.id} - {self.item_name} ({self.value})>"
+
+    def print_details(self):
+        """Print details of who owns the freebie and from which company."""
+        print(f"{self.dev.name} owns a {self.item_name} from {self.company.name}")
